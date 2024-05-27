@@ -181,7 +181,6 @@ function decodeMessage() {
         return;
     }
 
-    // Menampilkan preview gambar yang akan di-decode
     const canvas = document.createElement('canvas');
     canvas.width = originalImageData.width;
     canvas.height = originalImageData.height;
@@ -201,10 +200,8 @@ function decodeMessage() {
         decodedMessage += String.fromCharCode(charCode);
     }
 
-    // Menghapus karakter berantakan dari pesan rahasia
     decodedMessage = decodedMessage.replace(/[^a-zA-Z0-9\s]/g, '');
 
-    // Memasukkan inputan teks sesuai dengan yang ada pada gambar encode
     decodedMessage
 
     document.getElementById('decodedMessage').textContent = 'Pesan rahasia: ' + decodedMessage;
@@ -213,7 +210,6 @@ function decodeMessage() {
 
     enhanceDecodedImage(previewImage);
 
-    // Penjelasan gambar yang tampil setelah proses decode
     console.log('Gambar yang tampil setelah proses decode:');
     console.log('1. Gambar Asli: Gambar yang dipilih sebelum proses enkoding.');
     console.log('2. Gambar Decoded: Gambar yang sama dengan gambar asli, tetapi digunakan untuk menampilkan preview sebelum proses dekoding.');
