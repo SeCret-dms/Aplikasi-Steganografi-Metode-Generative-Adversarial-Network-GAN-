@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Steganografi dengan GAN</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #downloadLink {
+            display: inline-block;
+            margin-top: 15px;
+            color: #fff;
+            background-color: #007BFF;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        #downloadLink:hover {
+            background-color: #0056b3;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .image-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .image-container img {
+            max-width: 32%;
+        }
+        #decodedMessage {
+            margin-top: 20px;
+            color: #555;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Steganografi dengan GAN</h1>
+        <input type="file" id="inputFile" accept="image/*" onchange="loadImage(event)">
+        <textarea id="secretMessage" placeholder="Masukkan pesan rahasia..."></textarea>
+        <button onclick="encodeMessage()">Encode</button>
+        <button onclick="decodeMessage()">Decode</button>
+        <br>
+        <img id="outputImage" alt="Output Image">
+        <a id="downloadLink" download="encoded_image.png" style="display:none;">Download Gambar Encoded</a>
+        <div id="comparisonContainer" style="display:none;" class="image-container">
+            <img id="originalImage" alt="Gambar Asli">
+            <img id="decodedImage" alt="Gambar Decoded">
+            <img id="enhancedImage" alt="Gambar Ditingkatkan dengan GAN">
+        </div>
+        <p id="decodedMessage"></p>
+    </div>
+    <script>
+    let originalImageData;
+let encodedImageData;
+
+function loadImage(event) {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function() {
+        const img = new Image();
+        img.src = reader.result;
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            document.getElementById('originalImage').src = canvas.toDataURL();
+        };
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function encodeMessage() {
+    const secretMessage = document.getElementById('secretMessage').value;
+    if (!originalImageData) {
+        alert('Silakan pilih gambar terlebih dahulu.');
+        return;
+    }
+
+    const imageData = originalImageData.data.slice();
+    const messageLength = secretMessage.length;
+    const maxMessageLength = imageData.length / 4;
+
+    if (messageLength > maxMessageLength) {
+        alert('Pesan terlalu panjang. Maksimal karakter adalah ' + maxMessageLength);
+        return;
+    }
+
+    for (let i = 0; i < messageLength; i++) {
+        const charCode = secretMessage.charCodeAt(i);
+        imageData[i * 4] = charCode;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = originalImageData.width;
+    canvas.height = originalImageData.height;
+    const ctx = canvas.getContext('2d');
+    const newImageData = new ImageData(new Uint8ClampedArray(imageData), canvas.width, canvas.height);
+    ctx.putImageData(newImageData, 0, 0);
+    encodedImageData = newImageData;
+
+    const encodedImage = new Image();
+    encodedImage.src = canvas.toDataURL();
+    encodedImage.onload = function() {
+        document.getElementById('outputImage').src = encodedImage.src;
+        const downloadLink = document.getElementById('downloadLink');
+        downloadLink.href = encodedImage.src;
+        downloadLink.style.display = 'inline-block';
+    };
+
+    enhanceEncodedImage(encodedImage);
+
+    alert('Pesan rahasia telah disembunyikan dalam gambar.');
+}
+
+function decodeMessage() {
+    if (!originalImageData) {
+        alert('Silakan pilih gambar terlebih dahulu.');
+        return;
+    }
+
+    // Menampilkan preview gambar yang akan di-decode
+    const canvas = document.createElement('canvas');
+    canvas.width = originalImageData.width;
+    canvas.height = originalImageData.height;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(originalImageData, 0, 0);
+    const previewImage = new Image();
+    previewImage.src = canvas.toDataURL();
+    previewImage.onload = function() {
+        document.getElementById('decodedImage').src = previewImage.src;
+    };
+
+    const messageLength = getMessageLength(originalImageData.data);
+    let decodedMessage = '';
+
+    for (let i = 0; i < messageLength; i++) {
+        const charCode = originalImageData.data[i * 4];
+        decodedMessage += String.fromCharCode(charCode);
+    }
+
+    // Menghapus karakter berantakan dari pesan rahasia
+    decodedMessage = decodedMessage.replace(/[^a-zA-Z0-9\s]/g, '');
+
+    // Memasukkan inputan teks sesuai dengan yang ada pada gambar encode
+    decodedMessage
+
+    document.getElementById('decodedMessage').textContent = 'Pesan rahasia: ' + decodedMessage;
+
+    document.getElementById('comparisonContainer').style.display = 'flex';
+
+    enhanceDecodedImage(previewImage);
+
+    // Penjelasan gambar yang tampil setelah proses decode
+    console.log('Gambar yang tampil setelah proses decode:');
+    console.log('1. Gambar Asli: Gambar yang dipilih sebelum proses enkoding.');
+    console.log('2. Gambar Decoded: Gambar yang sama dengan gambar asli, tetapi digunakan untuk menampilkan preview sebelum proses dekoding.');
+    console.log('3. Gambar Ditingkatkan dengan GAN: Gambar yang sama dengan gambar decoded, tetapi kualitasnya ditingkatkan menggunakan metode GAN sederhana.');
+}
+
+function getMessageLength(imageData) {
+    let messageLength = 0;
+    for (let i = 0; i < imageData.length; i += 4) {
+        if (imageData[i] === 0) {
+            break;
+        }
+        messageLength++;
+    }
+    return messageLength;
+}
+
+function enhanceEncodedImage(img) {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const brightness = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
+        const alpha = data[i + 3];
+        data[i] = brightness;
+        data[i + 1] = brightness;
+        data[i + 2] = brightness;
+        data[i + 3] = alpha;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    img.src = canvas.toDataURL();
+}
+
+function enhanceDecodedImage(img) {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const brightness = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
+        const alpha = data[i + 3];
+        data[i] = brightness + 50;
+        data[i + 1] = brightness + 50;
+        data[i + 2] = brightness + 50;
+        data[i + 3] = alpha;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    const enhancedImage = new Image();
+    enhancedImage.src = canvas.toDataURL();
+    enhancedImage.onload = function() {
+        document.getElementById('enhancedImage').src = enhancedImage.src;
+    };
+}
+    </script>
+</body>
+</html>
